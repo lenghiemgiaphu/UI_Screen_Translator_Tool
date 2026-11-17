@@ -1,1 +1,0 @@
-# UI_Screen_Translator_Tool
