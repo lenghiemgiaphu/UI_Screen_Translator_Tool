@@ -2,145 +2,25 @@
   "UI_001": {
     "en": "task manager",
     "zh": "任务管理器",
-    "pinyin": "rèn wù guǎn lǐ qì",
-    "vi": "Trình quản lý tác vụ",
-    "fr": "Gestionnaire des tâches",
-    "de": "Task-Manager"
+    "pinyin": "rèn wu guǎn lǐ qì",
+    "vi": "Trình quản lý tác vụ"
   },
   "UI_002": {
     "en": "New tab",
     "zh": "新标签页",
     "pinyin": "xīn biāo qiān yè",
-    "vi": "Thẻ mới",
-    "fr": "Nouvel onglet",
-    "de": "Neuer Tab"
+    "vi": "Thẻ mới"
   },
   "UI_003": {
     "en": "Settings",
     "zh": "设置",
     "pinyin": "shè zhì",
-    "vi": "Cài đặt",
-    "fr": "Paramètres",
-    "de": "Einstellungen"
+    "vi": "Cài đặt"
   },
   "UI_004": {
     "en": "History",
     "zh": "历史记录",
     "pinyin": "lì shǐ jì lù",
-    "vi": "Lịch sử",
-    "fr": "Historique",
-    "de": "Verlauf"
-  },
-  "UI_005": {
-    "en": "Downloads",
-    "zh": "下载",
-    "pinyin": "xià zài",
-    "vi": "Tải xuống",
-    "fr": "Téléchargements",
-    "de": "Downloads"
-  },
-  "UI_006": {
-    "en": "Bookmarks",
-    "zh": "书签",
-    "pinyin": "shū qiān",
-    "vi": "Dấu trang",
-    "fr": "Favoris",
-    "de": "Lesezeichen"
-  },
-  "UI_007": {
-    "en": "Extensions",
-    "zh": "扩展程序",
-    "pinyin": "kuò zhǎn chéng xù",
-    "vi": "Tiện ích mở rộng",
-    "fr": "Extensions",
-    "de": "Erweiterungen"
-  },
-  "UI_008": {
-    "en": "Help",
-    "zh": "帮助",
-    "pinyin": "bāng zhù",
-    "vi": "Trợ giúp",
-    "fr": "Aide",
-    "de": "Hilfe"
-  },
-  "UI_009": {
-    "en": "Search",
-    "zh": "搜索",
-    "pinyin": "sōu suǒ",
-    "vi": "Tìm kiếm",
-    "fr": "Rechercher",
-    "de": "Suchen"
-  },
-  "UI_010": {
-    "en": "Save",
-    "zh": "保存",
-    "pinyin": "bǎo cún",
-    "vi": "Lưu",
-    "fr": "Enregistrer",
-    "de": "Speichern"
-  },
-  "UI_011": {
-    "en": "Cancel",
-    "zh": "取消",
-    "pinyin": "qǔ xiāo",
-    "vi": "Hủy",
-    "fr": "Annuler",
-    "de": "Abbrechen"
-  },
-  "UI_012": {
-    "en": "Exit",
-    "zh": "退出",
-    "pinyin": "tuì chū",
-    "vi": "Thoát",
-    "fr": "Quitter",
-    "de": "Beenden"
-  },
-  "UI_013": {
-    "en": "Copy",
-    "zh": "复制",
-    "pinyin": "fù zhì",
-    "vi": "Sao chép",
-    "fr": "Copier",
-    "de": "Kopieren"
-  },
-  "UI_014": {
-    "en": "Paste",
-    "zh": "粘贴",
-    "pinyin": "zhān tiē",
-    "vi": "Dán",
-    "fr": "Coller",
-    "de": "Einfügen"
-  },
-  "UI_015": {
-    "en": "Open",
-    "zh": "打开",
-    "pinyin": "dǎ kāi",
-    "vi": "Mở",
-    "fr": "Ouvrir",
-    "de": "Öffnen"
-  },
-  "UI_016": {
-    "en": "File",
-    "zh": "文件",
-    "pinyin": "wén jiàn",
-    "vi": "Tệp",
-    "fr": "Fichier",
-    "de": "Datei"
-  },
-  "UI_017": {
-    "en": "Edit",
-    "zh": "编辑",
-    "pinyin": "biān jí",
-    "vi": "Chỉnh sửa",
-    "fr": "Modifier",
-    "de": "Bearbeiten"
-  },
-  "UI_018": {
-    "en": "View",
-    "zh": "查看",
-    "pinyin": "chá kàn",
-    "vi": "Xem",
-    "fr": "Affichage",
-    "de": "Ansicht"
+    "vi": "Lịch sử"
   }
 }
