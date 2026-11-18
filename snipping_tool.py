@@ -1,3 +1,4 @@
+import re
 import sys
 import os
 import json
@@ -124,8 +125,12 @@ def translate_line(line_text, target_lang_name, db):
     db_lang = lang_info["db"]
     gt_lang = lang_info["gt"]
 
-    # 1. Tra cứu từ điển cục bộ database.json
-    if db:
+    # Làm sạch phím tắt (vd: "New tab Ctrl+T" -> "new tab") và dấu "..." chỉ để so khớp từ điển
+    clean_query = re.sub(r'\s+(ctrl|alt|shift|f\d+)(\+[a-z0-9]+)*$', '', line_text, flags=re.IGNORECASE)
+    clean_query = clean_query.rstrip('.').strip().lower()
+
+    # 1. Tra cứu từ điển cục bộ database.json (ngưỡng 80 để tránh khớp nhầm từ ngoài từ điển)
+    if db and clean_query:
         best_match_score = 0
         best_match_target = None
         best_pinyin = ""
@@ -136,8 +141,8 @@ def translate_line(line_text, target_lang_name, db):
 
             valid_values = [str(v) for k, v in translations.items() if isinstance(v, str) and k != "pinyin"]
             for val in valid_values:
-                score = fuzz.ratio(line_text.lower(), val.lower())
-                if score >= 60 and score > best_match_score:
+                score = fuzz.ratio(clean_query, val.lower())
+                if score >= 80 and score > best_match_score:
                     if db_lang in translations:
                         best_match_score = score
                         best_match_target = translations[db_lang]
@@ -146,7 +151,7 @@ def translate_line(line_text, target_lang_name, db):
         if best_match_target:
             return best_match_target, "Local DB", best_pinyin
 
-    # 2. Dịch trực tuyến qua Google Translator
+    # 2. Dịch trực tuyến qua Google Translator (giữ nguyên line_text gốc)
     try:
         translated = GoogleTranslator(source='auto', target=gt_lang).translate(line_text)
         return (translated if translated else line_text), "Google", ""
