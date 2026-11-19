@@ -12,34 +12,37 @@ from PyQt5.QtCore import Qt, QRect, QPoint, pyqtSignal, QObject, QTimer
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QIcon, QPixmap
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageOps
 from thefuzz import fuzz
 from deep_translator import GoogleTranslator
 
-# Đường dẫn Tesseract OCR
+# Path to Tesseract OCR executable
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# Phím tắt khoanh vùng chụp & giới hạn lịch sử
+# Capture hotkey & history limit
 HOTKEY_SNIP = 'f8'
 MAX_HISTORY = 100
 APP_SERVER_NAME = "ScreenTranslatorSingleInstance_v2"
 
 LANG_MAP = {
-    "Tiếng Việt": {"db": "vi", "gt": "vi"},
-    "Tiếng Anh": {"db": "en", "gt": "en"},
-    "Tiếng Trung (Giản thể)": {"db": "zh", "gt": "zh-CN"},
-    "Tiếng Trung (Phồn thể)": {"db": "zh", "gt": "zh-TW"},
-    "Tiếng Nhật": {"db": "ja", "gt": "ja"},
-    "Tiếng Hàn": {"db": "ko", "gt": "ko"},
-    "Tiếng Pháp": {"db": "fr", "gt": "fr"},
-    "Tiếng Đức": {"db": "de", "gt": "de"},
-    "Tiếng Tây Ban Nha": {"db": "es", "gt": "es"},
-    "Tiếng Nga": {"db": "ru", "gt": "ru"},
-    "Tiếng Thái": {"db": "th", "gt": "th"}
+    "English": {"db": "en", "gt": "en"},
+    "Vietnamese": {"db": "vi", "gt": "vi"},
+    "Chinese (Simplified)": {"db": "zh", "gt": "zh-CN"},
+    "Chinese (Traditional)": {"db": "zh", "gt": "zh-TW"},
+    "Japanese": {"db": "ja", "gt": "ja"},
+    "Korean": {"db": "ko", "gt": "ko"},
+    "French": {"db": "fr", "gt": "fr"},
+    "German": {"db": "de", "gt": "de"},
+    "Spanish": {"db": "es", "gt": "es"},
+    "Russian": {"db": "ru", "gt": "ru"},
+    "Thai": {"db": "th", "gt": "th"}
 }
 
-# Các gói ngôn ngữ Tesseract ưu tiên nạp nếu có sẵn trong máy
+# Preferred Tesseract OCR language packs to load if installed locally
 PREFERRED_OCR_LANGS = ['eng', 'vie', 'chi_sim', 'chi_tra', 'jpn', 'kor', 'fra', 'deu', 'rus', 'spa', 'tha']
+
+# CJK Unicode ranges (Chinese, Japanese, Korean, and full-width punctuation)
+CJK_CHAR_CLASS = r'\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af\u3000-\u303f\uff00-\uffef'
 
 
 class TriggerSignal(QObject):
@@ -51,6 +54,47 @@ trigger = TriggerSignal()
 
 def get_base_dir():
     return os.path.dirname(os.path.abspath(__file__))
+
+
+def clean_cjk_spaces(text):
+    """Remove spurious spaces inserted by Tesseract between CJK characters."""
+    return re.sub(
+        rf'(?<=[{CJK_CHAR_CLASS}])\s+(?=[{CJK_CHAR_CLASS}])',
+        '',
+        text
+    )
+
+
+def prepare_ocr_image(img, scale=2.0, pad=24):
+    """Scale image and add background-matched padding so Tesseract does not clip edge characters."""
+    rgb_img = img.convert("RGB")
+    if scale != 1.0:
+        new_w = max(1, int(rgb_img.width * scale))
+        new_h = max(1, int(rgb_img.height * scale))
+        rgb_img = rgb_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    corner_color = rgb_img.getpixel((0, 0))
+    return ImageOps.expand(rgb_img, border=pad, fill=corner_color)
+
+
+def extract_ocr_lines(img, ocr_langs):
+    """Multi-pass OCR extraction with automatic PSM and scale fallback for oversized/single-line text."""
+    primary_scale = 2.0 if max(img.width, img.height) < 900 else 1.0
+    prepared = prepare_ocr_image(img, scale=primary_scale, pad=24)
+
+    for psm in ('--psm 6', '--psm 7', '--psm 11'):
+        raw_text = pytesseract.image_to_string(prepared, lang=ocr_langs, config=psm).strip()
+        if raw_text:
+            return [clean_cjk_spaces(line.strip()) for line in raw_text.split('\n') if line.strip()]
+
+    if img.height > 80:
+        down_scale = min(80.0 / img.height, 0.5)
+        shrunk = prepare_ocr_image(img, scale=down_scale, pad=24)
+        for psm in ('--psm 7', '--psm 6'):
+            raw_text = pytesseract.image_to_string(shrunk, lang=ocr_langs, config=psm).strip()
+            if raw_text:
+                return [clean_cjk_spaces(line.strip()) for line in raw_text.split('\n') if line.strip()]
+
+    return []
 
 
 def get_available_ocr_langs():
@@ -117,19 +161,21 @@ def clear_history_file():
 
 
 def translate_line(line_text, target_lang_name, db):
-    line_text = line_text.strip()
+    line_text = clean_cjk_spaces(line_text.strip())
     if not line_text:
         return "", "N/A", ""
 
-    lang_info = LANG_MAP.get(target_lang_name, {"db": "vi", "gt": "vi"})
+    lang_info = LANG_MAP.get(target_lang_name, {"db": "en", "gt": "en"})
     db_lang = lang_info["db"]
     gt_lang = lang_info["gt"]
 
-    # Làm sạch phím tắt (vd: "New tab Ctrl+T" -> "new tab") và dấu "..." chỉ để so khớp từ điển
+    # Strip trailing keyboard shortcuts (e.g., "New tab Ctrl+T" -> "new tab") and ellipses for glossary lookup
     clean_query = re.sub(r'\s+(ctrl|alt|shift|f\d+)(\+[a-z0-9]+)*$', '', line_text, flags=re.IGNORECASE)
-    clean_query = clean_query.rstrip('.').strip().lower()
+    clean_query = clean_query.rstrip('.…').strip().lower()
 
-    # 1. Tra cứu từ điển cục bộ database.json (ngưỡng 80 để tránh khớp nhầm từ ngoài từ điển)
+    has_cjk_input = bool(re.search(r'[\u4e00-\u9fff]', line_text))
+
+    # 1. Local JSON glossary lookup (threshold 80 to prevent false-positive matches)
     if db and clean_query:
         best_match_score = 0
         best_match_target = None
@@ -141,22 +187,28 @@ def translate_line(line_text, target_lang_name, db):
 
             valid_values = [str(v) for k, v in translations.items() if isinstance(v, str) and k != "pinyin"]
             for val in valid_values:
-                score = fuzz.ratio(clean_query, val.lower())
+                normalized_val = clean_cjk_spaces(val).lower()
+                score = fuzz.ratio(clean_query, normalized_val)
                 if score >= 80 and score > best_match_score:
                     if db_lang in translations:
                         best_match_score = score
                         best_match_target = translations[db_lang]
-                        best_pinyin = translations.get("pinyin", "") if db_lang == "zh" else ""
+                        if db_lang == "zh" or has_cjk_input:
+                            best_pinyin = translations.get("pinyin", "")
+                        else:
+                            best_pinyin = ""
 
         if best_match_target:
             return best_match_target, "Local DB", best_pinyin
 
-    # 2. Dịch trực tuyến qua Google Translator (giữ nguyên line_text gốc)
+    # 2. Online Google Translate fallback (preserves original line_text)
+    src_lang = 'zh-CN' if (has_cjk_input and gt_lang not in ('zh-CN', 'zh-TW')) else 'auto'
+
     try:
-        translated = GoogleTranslator(source='auto', target=gt_lang).translate(line_text)
+        translated = GoogleTranslator(source=src_lang, target=gt_lang).translate(line_text)
         return (translated if translated else line_text), "Google", ""
     except Exception as e:
-        return line_text, f"Lỗi ({str(e)[:12]})", ""
+        return line_text, f"Error ({str(e)[:12]})", ""
 
 
 class LineItemWidget(QWidget):
@@ -177,12 +229,26 @@ class LineItemWidget(QWidget):
             meta_lbl.setStyleSheet("color: #6B7280; font-size: 8pt; background: transparent;")
             card_layout.addWidget(meta_lbl)
 
-        # Hàng 1: Văn bản gốc + nút Copy gốc
+        # Attach Pinyin annotation to whichever line contains Chinese characters
+        has_cjk_raw = bool(re.search(r'[\u4e00-\u9fff]', raw_text))
+        has_cjk_trans = bool(re.search(r'[\u4e00-\u9fff]', translated_text))
+
+        if pinyin and has_cjk_raw:
+            display_raw = f"{raw_text}  ({pinyin})"
+            display_trans = translated_text
+        elif pinyin and has_cjk_trans:
+            display_raw = raw_text
+            display_trans = f"{translated_text}  ({pinyin})"
+        else:
+            display_raw = raw_text
+            display_trans = translated_text
+
+        # Row 1: Original text + Copy button
         raw_row = QHBoxLayout()
         raw_row.setContentsMargins(0, 0, 0, 0)
         raw_row.setSpacing(8)
 
-        self.raw_label = QLabel(raw_text)
+        self.raw_label = QLabel(display_raw)
         self.raw_label.setFont(QFont("Segoe UI", 9))
         self.raw_label.setStyleSheet("color: #9CA3AF; background: transparent;")
         self.raw_label.setWordWrap(True)
@@ -192,18 +258,17 @@ class LineItemWidget(QWidget):
         self.btn_copy_raw.setObjectName("CopyRawBtn")
         self.btn_copy_raw.setFixedSize(46, 22)
         self.btn_copy_raw.setCursor(Qt.PointingHandCursor)
-        self.btn_copy_raw.setToolTip("Copy văn bản gốc")
+        self.btn_copy_raw.setToolTip("Copy original text")
         self.btn_copy_raw.clicked.connect(lambda: self.handle_copy(self.raw_text, self.btn_copy_raw))
 
         raw_row.addWidget(self.raw_label, stretch=1)
         raw_row.addWidget(self.btn_copy_raw, alignment=Qt.AlignTop)
 
-        # Hàng 2: Văn bản đã dịch (+ pinyin nếu có) + nút Copy bản dịch
+        # Row 2: Translated text + Copy button
         trans_row = QHBoxLayout()
         trans_row.setContentsMargins(0, 0, 0, 0)
         trans_row.setSpacing(8)
 
-        display_trans = f"{translated_text}  ({pinyin})" if pinyin else translated_text
         self.trans_label = QLabel(display_trans)
         self.trans_label.setFont(QFont("Segoe UI", 10, QFont.DemiBold))
         self.trans_label.setStyleSheet("color: #F3F4F6; background: transparent;")
@@ -214,7 +279,7 @@ class LineItemWidget(QWidget):
         self.btn_copy_trans.setObjectName("CopyTransBtn")
         self.btn_copy_trans.setFixedSize(46, 23)
         self.btn_copy_trans.setCursor(Qt.PointingHandCursor)
-        self.btn_copy_trans.setToolTip("Copy bản dịch")
+        self.btn_copy_trans.setToolTip("Copy translation")
         self.btn_copy_trans.clicked.connect(lambda: self.handle_copy(self.translated_text, self.btn_copy_trans))
 
         trans_row.addWidget(self.trans_label, stretch=1)
@@ -281,6 +346,7 @@ class LineItemWidget(QWidget):
 class MultiLineOverlay(QWidget):
     def __init__(self, rect=None, lines_list=None, start_in_history=False):
         super().__init__()
+        self.has_capture = rect is not None
         self.lines_list = [line for line in (lines_list or []) if line.strip()]
         self.db = load_database()
         self.old_pos = None
@@ -289,7 +355,7 @@ class MultiLineOverlay(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
-        popup_width = 430
+        popup_width = 445
         base_rows = len(self.lines_list) if not start_in_history else 4
         popup_height = min(max(base_rows * 82 + 72, 160), 520)
 
@@ -304,7 +370,7 @@ class MultiLineOverlay(QWidget):
             pos_y = (screen_geo.height() - popup_height) // 2
 
         self.setGeometry(pos_x, pos_y, popup_width, popup_height)
-        self.setMinimumSize(340, 140)
+        self.setMinimumSize(360, 140)
 
         self.container = QWidget(self)
         self.container.setObjectName("MainContainer")
@@ -330,7 +396,7 @@ class MultiLineOverlay(QWidget):
                 padding: 3px 8px;
                 font-family: "Segoe UI";
                 font-size: 9pt;
-                min-width: 145px;
+                min-width: 160px;
             }
             QComboBox:hover, QComboBox:focus {
                 border-color: #5B6275;
@@ -429,18 +495,18 @@ class MultiLineOverlay(QWidget):
         main_layout.setContentsMargins(12, 10, 12, 12)
         main_layout.setSpacing(9)
 
-        # Thanh tiêu đề: Chọn/Tìm ngôn ngữ + Nút Lịch sử + Nút Đóng
+        # Header bar: Target language selector + History button + Close button
         header = QHBoxLayout()
         header.setSpacing(7)
 
-        self.title_lbl = QLabel("Dịch sang:")
+        self.title_lbl = QLabel("Translate to:")
         self.title_lbl.setObjectName("HeaderTitle")
 
         self.lang_combo = QComboBox()
         self.lang_combo.addItems(list(LANG_MAP.keys()))
         self.lang_combo.setEditable(True)
         self.lang_combo.setInsertPolicy(QComboBox.NoInsert)
-        self.lang_combo.lineEdit().setPlaceholderText("Tìm ngôn ngữ...")
+        self.lang_combo.lineEdit().setPlaceholderText("Search language...")
 
         completer = QCompleter(list(LANG_MAP.keys()), self)
         completer.setCaseSensitivity(Qt.CaseInsensitive)
@@ -449,17 +515,17 @@ class MultiLineOverlay(QWidget):
         self.lang_combo.setCompleter(completer)
         self.lang_combo.currentTextChanged.connect(self.on_language_changed)
 
-        self.history_btn = QPushButton("Lịch sử")
+        self.history_btn = QPushButton("History")
         self.history_btn.setObjectName("HeaderBtn")
         self.history_btn.setCursor(Qt.PointingHandCursor)
-        self.history_btn.setToolTip("Xem 100 lần dịch gần nhất")
+        self.history_btn.setToolTip("View last 100 translations")
         self.history_btn.clicked.connect(self.toggle_history_mode)
 
         close_btn = QPushButton("×")
         close_btn.setObjectName("CloseBtn")
         close_btn.setFixedSize(26, 26)
         close_btn.setCursor(Qt.PointingHandCursor)
-        close_btn.setToolTip("Đóng (Esc)")
+        close_btn.setToolTip("Close (Esc)")
         close_btn.clicked.connect(self.close)
 
         header.addWidget(self.title_lbl)
@@ -469,7 +535,7 @@ class MultiLineOverlay(QWidget):
         header.addWidget(close_btn)
         main_layout.addLayout(header)
 
-        # Thanh tìm kiếm riêng cho chế độ Lịch sử
+        # Search toolbar for History mode
         self.history_toolbar = QWidget()
         hist_bar_layout = QHBoxLayout(self.history_toolbar)
         hist_bar_layout.setContentsMargins(0, 0, 0, 0)
@@ -477,10 +543,10 @@ class MultiLineOverlay(QWidget):
 
         self.history_search = QLineEdit()
         self.history_search.setObjectName("HistorySearch")
-        self.history_search.setPlaceholderText("Tìm trong lịch sử dịch...")
+        self.history_search.setPlaceholderText("Search translation history...")
         self.history_search.textChanged.connect(self.render_history)
 
-        self.clear_hist_btn = QPushButton("Xóa hết")
+        self.clear_hist_btn = QPushButton("Clear All")
         self.clear_hist_btn.setObjectName("DangerBtn")
         self.clear_hist_btn.setCursor(Qt.PointingHandCursor)
         self.clear_hist_btn.clicked.connect(self.handle_clear_history)
@@ -489,7 +555,7 @@ class MultiLineOverlay(QWidget):
         hist_bar_layout.addWidget(self.clear_hist_btn)
         main_layout.addWidget(self.history_toolbar)
 
-        # Vùng danh sách thẻ
+        # Card scroll area
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QScrollArea.NoFrame)
@@ -555,23 +621,28 @@ class MultiLineOverlay(QWidget):
             self.title_lbl.hide()
             self.lang_combo.hide()
             self.history_toolbar.show()
-            self.history_btn.setText("Quay lại")
+            self.history_btn.setText("Back")
             self.render_history()
         else:
             self.title_lbl.show()
             self.lang_combo.show()
             self.history_toolbar.hide()
-            self.history_btn.setText("Lịch sử")
+            self.history_btn.setText("History")
             self.refresh_lines()
 
     def refresh_lines(self):
         self.clear_cards()
         target_lang = self.lang_combo.currentText()
         if target_lang not in LANG_MAP:
-            target_lang = "Tiếng Việt"
+            target_lang = "English"
 
         if not self.lines_list:
-            empty_lbl = QLabel("Chưa có nội dung chụp mới. Bấm F8 để quét vùng màn hình.")
+            msg = (
+                "No text detected in the captured area. Press F8 and try dragging a slightly wider selection."
+                if self.has_capture
+                else "No recent capture. Press F8 to select a screen area."
+            )
+            empty_lbl = QLabel(msg)
             empty_lbl.setStyleSheet("color: #8E95A5; font-size: 9pt; padding: 8px 2px;")
             empty_lbl.setWordWrap(True)
             self.lines_layout.addWidget(empty_lbl)
@@ -613,7 +684,7 @@ class MultiLineOverlay(QWidget):
                 shown_count += 1
 
         if shown_count == 0:
-            msg = "Không tìm thấy kết quả phù hợp." if keyword else "Lịch sử trống (lưu tối đa 100 lần dịch gần nhất)."
+            msg = "No matching results found." if keyword else "History is empty (stores up to the 100 most recent translations)."
             empty_lbl = QLabel(msg)
             empty_lbl.setStyleSheet("color: #8E95A5; font-size: 9pt; padding: 8px 2px;")
             self.lines_layout.addWidget(empty_lbl)
@@ -643,7 +714,6 @@ class SnippingWidget(QWidget):
         self.ocr_langs = get_available_ocr_langs()
 
     def start_snip(self):
-        # Tránh chụp chồng nếu lớp phủ đang mở sẵn
         if self.isVisible():
             return
 
@@ -695,7 +765,6 @@ class SnippingWidget(QWidget):
         self.begin = None
         self.end = None
 
-        # Ẩn ngay lớp phủ và ép cập nhật giao diện để không bị đóng băng màn hình
         self.hide()
         QApplication.processEvents()
 
@@ -706,11 +775,8 @@ class SnippingWidget(QWidget):
         cropped = self.full_screen_pixmap.copy(rect)
         cropped.save(image_path, 'png')
 
-        img = Image.open(image_path)
-        img = img.resize((img.width * 2, img.height * 2), Image.Resampling.LANCZOS)
-
-        raw_text_full = pytesseract.image_to_string(img, lang=self.ocr_langs).strip()
-        lines = [line.strip() for line in raw_text_full.split('\n') if line.strip()]
+        with Image.open(image_path) as img:
+            lines = extract_ocr_lines(img, self.ocr_langs)
 
         self.overlay = MultiLineOverlay(rect=rect, lines_list=lines, start_in_history=False)
         self.overlay.show()
@@ -739,16 +805,16 @@ class AppController:
 
         tray_menu = QMenu()
 
-        snip_action = QAction(f"Chụp màn hình để dịch ({HOTKEY_SNIP.upper()})", self.app)
+        snip_action = QAction(f"Capture Screen to Translate ({HOTKEY_SNIP.upper()})", self.app)
         snip_action.triggered.connect(self.snipper.start_snip)
 
-        history_action = QAction("Lịch sử dịch (100 gần nhất)", self.app)
+        history_action = QAction("Translation History (Last 100)", self.app)
         history_action.triggered.connect(self.open_history)
 
-        open_db_action = QAction("Mở file database.json", self.app)
+        open_db_action = QAction("Open database.json", self.app)
         open_db_action.triggered.connect(self.open_database)
 
-        quit_action = QAction("Thoát", self.app)
+        quit_action = QAction("Exit", self.app)
         quit_action.triggered.connect(self.app.quit)
 
         tray_menu.addAction(snip_action)
@@ -773,7 +839,7 @@ class AppController:
 
 
 def replace_existing_instance(app):
-    """Tự động tắt tiến trình cũ nếu đang chạy ngầm để tránh bật 2 giao diện cùng lúc."""
+    """Terminate any existing background instance so duplicate overlays do not spawn."""
     socket = QLocalSocket()
     socket.connectToServer(APP_SERVER_NAME)
     if socket.waitForConnected(250):
@@ -803,6 +869,6 @@ if __name__ == '__main__':
     _server = replace_existing_instance(app)
     controller = AppController(app)
 
-    print(f"-> Ứng dụng đã chạy ngầm (OCR: {controller.snipper.ocr_langs})!")
-    print(f"-> Bấm phím [{HOTKEY_SNIP.upper()}] để khoanh vùng dịch.")
+    print(f"-> Screen Translator is running in background (OCR: {controller.snipper.ocr_langs})")
+    print(f"-> Press [{HOTKEY_SNIP.upper()}] to capture and translate.")
     sys.exit(app.exec_())
