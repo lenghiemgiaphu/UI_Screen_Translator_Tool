@@ -1,213 +1,188 @@
 <div align="center">
 
-# 🖥️ Screen Translator
+# Screen Translator
 
-**Capture any area of your screen, extract the text with OCR, and translate it instantly — right where you are looking.**
+**Press a hotkey, drag over any text on your screen, and read the translation right next to it — OCR and a curated local glossary first, Google Translate as fallback.**
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
-![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)
-![GUI](https://img.shields.io/badge/GUI-PyQt5-41CD52?logo=qt&logoColor=white)
-![OCR](https://img.shields.io/badge/OCR-Tesseract-4B8BBE)
-![License](https://img.shields.io/badge/License-MIT-green)
+Windows • Python • PyQt5 • Tesseract OCR
+
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![PyQt5](https://img.shields.io/badge/GUI-PyQt5-41CD52?style=flat-square&logo=qt&logoColor=white)](https://pypi.org/project/PyQt5/)
+[![Tesseract](https://img.shields.io/badge/OCR-Tesseract-4B8BBE?style=flat-square)](https://github.com/UB-Mannheim/tesseract/wiki)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=flat-square&logo=windows&logoColor=white)](#5-installation)
+[![Languages](https://img.shields.io/badge/Target%20Languages-11-F59E0B?style=flat-square)](#21-supported-languages)
+[![License](https://img.shields.io/badge/License-MIT-16A34A?style=flat-square)](#11-license)
+
+[✨ Features](#2-features) • [⚙️ How It Works](#3-how-it-works) • [🚀 Installation](#5-installation) • [📚 Glossary](#7-local-glossary-databasejson) • [⚠️ Limitations](#9-scope-limitations--caveats)
 
 </div>
 
 ---
 
-## 📖 Table of Contents
+## 1. Overview
 
-- [Overview](#-overview)
-- [Features](#-features)
-- [How It Works](#-how-it-works)
-- [Requirements](#-requirements)
-- [Installation](#-installation)
-- [Usage](#-usage)
-- [Local Glossary (`database.json`)](#-local-glossary-databasejson)
-- [Configuration](#-configuration)
-- [Project Structure](#-project-structure)
-- [Troubleshooting](#-troubleshooting)
-- [Privacy](#-privacy)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
-- [License](#-license)
+Screen Translator is a lightweight tray application for Windows. Press **F8**, drag a rectangle over text anywhere on the screen — a game, a PDF, a video, an application menu — and a compact, always-on-top window appears beside your selection showing each recognized line with its translation.
+
+It is built for people who read foreign-language content all day and do not want to copy text by hand or switch to a browser to translate a single line.
+
+**What makes it different**
+
+1. **Hybrid translation.** Each line is matched against a user-editable **local glossary** first (fuzzy, ≥ 80 % similarity), so UI terms and domain vocabulary stay consistent and work offline. Only unmatched lines go to **Google Translate**.
+2. **OCR built for short, awkward text.** Multi-pass Tesseract with automatic fallback page-segmentation modes, 2× upscaling and background-matched padding recovers single lines, menu items and small fonts that a single pass misses.
+3. **Chinese-aware.** Removes the spurious spaces Tesseract inserts between CJK characters and shows **Pinyin** when the glossary provides it.
+4. **Zero-friction workflow.** Global hotkey, live target-language switching, one-click copy, and a searchable history of the last 100 translations.
 
 ---
 
-## 🔍 Overview
-
-**Screen Translator** is a lightweight Windows background utility that lives in your system tray. Press a single hotkey (**F8** by default), drag a rectangle over any text on your screen — a game, a PDF, a video, an app UI, an image — and a compact floating window appears next to your selection with the **original text and its translation**, line by line.
-
-It is built for people who constantly read content in foreign languages and don't want to copy text by hand, switch windows, or open a browser tab just to translate a single line.
-
-### Highlights
-
-- ⚡ **One hotkey, zero friction** — press `F8`, drag, read.
-- 🧠 **Hybrid translation engine** — a fast, offline, fuzzy-matched **local glossary** is checked first; **Google Translate** is used as a fallback.
-- 🀄 **Chinese-aware** — automatic Pinyin annotation and cleanup of the stray spaces Tesseract inserts between CJK characters.
-- 🕘 **Built-in searchable history** of your last 100 translations.
-- 🪟 **Always-on-top, draggable, resizable** dark-themed result window.
-
----
-
-## ✨ Features
+## 2. Features
 
 | Feature | Description |
-| --- | --- |
-| **Global hotkey capture** | Trigger a screen snip from anywhere with `F8`, even when the app is minimized to the tray. |
-| **Multi-pass OCR** | Automatically retries with different Tesseract page-segmentation modes (`--psm 6 → 7 → 11`) and image scaling to recover single-line, oversized, or small text. |
-| **Smart image preprocessing** | Upscales small captures (2×) and adds background-matched padding so edge characters are not clipped. |
-| **Multi-language OCR** | Auto-detects which installed Tesseract language packs are available and loads them together (`eng+vie+chi_sim+…`). |
-| **Local glossary lookup** | Fuzzy-matches (≥ 80 % similarity) each line against `database.json` for consistent, curated translations of UI terms. |
-| **Keyboard-shortcut aware** | Strips trailing shortcuts such as `Ctrl+T` or `Alt+F4` and trailing ellipses before glossary matching (e.g. `New tab Ctrl+T` → `new tab`). |
-| **Google Translate fallback** | Uses [`deep-translator`](https://pypi.org/project/deep-translator/) for anything not in the glossary. |
-| **Pinyin support** | Displays Pinyin next to Chinese text when the glossary provides it. |
-| **Live language switching** | Change the target language from a searchable dropdown and the results re-translate instantly. |
-| **One-click copy** | Copy either the original text or the translation per line, with visual confirmation. |
-| **Translation history** | Browse, search, and clear the last 100 translations. |
-| **Single-instance guard** | Launching the app again cleanly replaces the previous background instance. |
-| **System tray integration** | Capture, open history, edit the glossary, or exit from the tray menu. |
+| :--- | :--- |
+| **Global hotkey capture** | Start a snip from anywhere with `F8`, even while the app sits in the system tray. |
+| **Multi-pass OCR** | Retries with Tesseract `--psm 6 → 7 → 11` and scaled images to recover text blocks, single lines and sparse text. |
+| **Smart preprocessing** | Upscales small captures 2× and pads with the detected background color so edge characters are not clipped. |
+| **Automatic language-pack detection** | Loads every installed pack from the supported list together (e.g. `eng+vie+chi_sim`). |
+| **Local glossary** | Fuzzy matching against `database.json` with normalization of case, trailing ellipses and keyboard shortcuts (`New tab Ctrl+T` → `new tab`). |
+| **Google Translate fallback** | Via [`deep-translator`](https://pypi.org/project/deep-translator/) for anything the glossary cannot resolve. |
+| **Pinyin display** | Shown for Chinese text when the matching glossary entry has a `pinyin` field. |
+| **Live language switching** | Searchable dropdown; results re-translate instantly. |
+| **One-click copy** | Copy the original or the translation per line, with visual confirmation. |
+| **History** | Browse, search and clear the last 100 translations. |
+| **Single-instance guard** | Starting the app again cleanly replaces the previous background instance. |
+| **Tray menu** | Capture, open history, open the glossary, or exit. |
 
-### Supported Languages
+### 2.1 Supported Languages
 
-Currently: English · Vietnamese · Chinese (Simplified) 
-Future planes: Chinese (Traditional) · Japanese · Korean · French · German · Spanish · Russian · Thai
+English · Vietnamese · Chinese (Simplified) · Chinese (Traditional) · Japanese · Korean · French · German · Spanish · Russian · Thai
 
 ---
 
-## ⚙️ How It Works
+## 3. How It Works
 
 ```text
-   F8 hotkey
-       │
-       ▼
-┌──────────────────┐    ┌────────────────────┐    ┌──────────────────────┐
-│  Fullscreen      │ ─► │  Tesseract OCR     │ ─► │  Line-by-line        │
-│  region selector │    │  (multi-pass, PSM) │    │  translation         │
-└──────────────────┘    └────────────────────┘    └──────────┬───────────┘
-                                                             │
-                              ┌──────────────────────────────┴───────┐
-                              ▼                                      ▼
-                    1. Local glossary (fuzzy ≥ 80%)        2. Google Translate
-                       database.json  → source: "Local DB"    (fallback)
-                              │                                      │
-                              └──────────────────┬───────────────────┘
-                                                 ▼
-                                  Floating result window  +  history.json
+   F8 hotkey / tray menu
+            |
+            v
++---------------------------+     +------------------------------+     +---------------------------+
+| 1. Region selector        | --> | 2. Preprocess + Tesseract    | --> | 3. Line-by-line pipeline  |
+|    frozen screenshot of   |     |    2x upscale, padding,      |     |    clean CJK spacing,     |
+|    the primary display    |     |    PSM 6 -> 7 -> 11 retries  |     |    normalize text         |
++---------------------------+     +------------------------------+     +-------------+-------------+
+                                                                                      |
+                                              +---------------------------------------+------+
+                                              v                                              v
+                               +-----------------------------+              +--------------------------+
+                               | 4a. Local glossary          |  no match    | 4b. Google Translate     |
+                               |     fuzzy ratio >= 80       | -----------> |     (deep-translator)    |
+                               |     source = "Local DB"     |              |     source = "Google"    |
+                               +--------------+--------------+              +-------------+------------+
+                                              |                                           |
+                                              +---------------------+---------------------+
+                                                                    v
+                                              +------------------------------------------+
+                                              | 5. Floating result window + history.json |
+                                              +------------------------------------------+
 ```
 
-1. **Capture** — A frozen screenshot of the primary display is shown with a dim overlay while you drag a selection.
-2. **Recognize** — The cropped region is preprocessed and passed to Tesseract using every installed, supported language pack.
-3. **Translate** — Each detected line is looked up in the local glossary first; if there is no confident match, it is sent to Google Translate.
-4. **Display & store** — Results appear in a floating window next to your selection and are saved to `history.json`.
+1. **Capture** — a frozen screenshot of the primary display is shown under a dim overlay while you drag a selection (`Esc` cancels).
+2. **Recognize** — the crop is preprocessed and passed to Tesseract using all installed, supported language packs.
+3. **Translate** — each line is looked up in the glossary; if there is no confident match it is sent to Google Translate.
+4. **Display & store** — results appear next to the selection and are appended to `history.json` (capped at 100 entries).
 
 ---
 
-## 📋 Requirements
+## 4. Requirements
 
-- **Operating system:** Windows 10 / 11
-- **Python:** 3.9 or newer
-- **Tesseract OCR:** installed locally (see below)
-- **Internet connection:** only required for the Google Translate fallback
+| Component | Requirement |
+| :--- | :--- |
+| **OS** | Windows 10 / 11 |
+| **Python** | 3.9 or newer |
+| **Tesseract OCR** | Installed locally, with the language packs you need |
+| **Internet** | Only for the Google Translate fallback; glossary hits work offline |
 
-### Python dependencies
+**Python packages**
 
 | Package | Purpose |
-| --- | --- |
+| :--- | :--- |
 | `PyQt5` | GUI, system tray, screen capture |
-| `pytesseract` | Python wrapper for Tesseract OCR |
+| `pytesseract` | Tesseract wrapper |
 | `Pillow` | Image processing |
 | `deep-translator` | Google Translate client |
-| `thefuzz` | Fuzzy string matching for the local glossary |
-| `keyboard` | Global hotkey registration |
+| `thefuzz` | Fuzzy matching for the glossary |
+| `keyboard` | Global hotkey |
+
+> ⚠️ Make sure your `requirements.txt` lists **all six** packages (`keyboard` and `thefuzz` included), otherwise `pip install -r requirements.txt` produces an incomplete environment:
+>
+> ```text
+> PyQt5>=5.15.9
+> pytesseract>=0.3.10
+> Pillow>=10.0.0
+> deep-translator>=1.11.4
+> thefuzz>=0.20.0
+> keyboard>=0.13.5
+> ```
 
 ---
 
-## 🚀 Installation
+## 5. Installation
 
-### 1. Install Tesseract OCR
-
-Download and install Tesseract for Windows from the [UB Mannheim builds](https://github.com/UB-Mannheim/tesseract/wiki).
-
-During setup, **select the additional language data** you need (for example *Vietnamese*, *Chinese – Simplified*, *Japanese*, *Korean*, …). The app automatically detects and uses whichever of the following packs are installed:
+**1. Install Tesseract OCR** from the [UB Mannheim builds](https://github.com/UB-Mannheim/tesseract/wiki). During setup, tick the extra language data you need. The app uses whichever of these packs are installed:
 
 ```text
 eng  vie  chi_sim  chi_tra  jpn  kor  fra  deu  rus  spa  tha
 ```
 
-> By default the app expects Tesseract at `C:\Program Files\Tesseract-OCR\tesseract.exe`.
-> If you installed it elsewhere, see [Configuration](#-configuration).
+By default the app expects `C:\Program Files\Tesseract-OCR\tesseract.exe` (see [Configuration](#8-configuration) to change it).
 
-### 2. Clone the repository
+**2. Clone and set up**
 
 ```bash
-git clone [https://github.com/<your-username>/<your-repo>.git](https://github.com/lenghiemgiaphu/UI_Screen_Translator_Tool.git)
+git clone https://github.com/<your-username>/<your-repo>.git
 cd <your-repo>
-```
-
-### 3. Create a virtual environment (recommended)
-
-```bash
 python -m venv venv
 venv\Scripts\activate
-```
-
-### 4. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 5. Run the application
+**3. Run**
 
 ```bash
 python snipping_tool.py
 ```
 
-You should see:
+Expected console output:
 
 ```text
 -> Screen Translator is running in background (OCR: eng+vie+chi_sim+...)
 -> Press [F8] to capture and translate.
 ```
 
-The app now runs in the system tray (blue square icon).
+The app now lives in the system tray.
 
 ---
 
-## 🎯 Usage
+## 6. Usage
 
-1. Press **`F8`** (or choose *Capture Screen to Translate* from the tray menu).
-2. **Click and drag** to select the area containing text. Press `Esc` to cancel.
-3. Release the mouse — a result window appears beside your selection.
-4. Pick the **target language** from the dropdown (type to search). Results update instantly.
-5. Use the **Copy** buttons to copy the original text or the translation.
-6. Click **History** to browse and search past translations, or **Clear All** to wipe them.
-7. Press `Esc` or click **×** to close the window.
+1. Press **`F8`** or choose *Capture Screen to Translate* from the tray menu.
+2. **Click and drag** over the text. `Esc` cancels.
+3. Release — the result window opens beside your selection.
+4. Choose a **target language** from the dropdown (type to search); results update instantly.
+5. Use **Copy** to copy the original or the translation of any line.
+6. Open **History** to browse and search past translations, or **Clear All** to delete them.
+7. Move the window by dragging, resize it from the bottom-right grip, close it with `Esc` or **×**.
 
-### Tray menu
-
-| Action | Description |
-| --- | --- |
-| **Capture Screen to Translate (F8)** | Starts a new snip. |
-| **Translation History (Last 100)** | Opens the history viewer directly. |
-| **Open database.json** | Opens the local glossary in your default editor. |
-| **Exit** | Quits the application. |
-
-### Result window
-
-- **Drag** anywhere on the window to move it.
-- **Resize** using the grip in the bottom-right corner.
-- Each card shows the **original line**, the **translation**, and (for Chinese) the **Pinyin**.
+| Tray action | Effect |
+| :--- | :--- |
+| Capture Screen to Translate (F8) | Starts a new snip |
+| Translation History (Last 100) | Opens the history viewer |
+| Open database.json | Opens the glossary in your default editor |
+| Exit | Quits the app |
 
 ---
 
-## 📚 Local Glossary (`database.json`)
+## 7. Local Glossary (`database.json`)
 
-The glossary gives you full control over how specific terms are translated — ideal for **software UI strings, game terminology, or domain-specific vocabulary** where machine translation is inconsistent.
-
-### Format
-
-Each entry has a unique key and contains translations keyed by language code. An optional `pinyin` field provides the Pinyin reading for the Chinese text.
+The glossary gives you deterministic control over specific terms — ideal for **software UI strings, game terminology and domain vocabulary** where machine translation is inconsistent.
 
 ```json
 {
@@ -220,145 +195,82 @@ Each entry has a unique key and contains translations keyed by language code. An
 }
 ```
 
-### Matching rules
+**Matching rules**
 
-- Every text value in an entry (except `pinyin`) is a searchable source term.
-- Input is normalized (lower-cased, shortcuts like `Ctrl+T` and trailing `.` / `…` removed) and compared using fuzzy matching.
-- A match requires a **similarity score of at least 80** and the entry must contain the **target language** code.
-- Matches are labelled **`Local DB`** internally; everything else falls back to **`Google`**.
+- Every text value of an entry (except `pinyin`) is a searchable source term; the entry must also contain the **target language** code to be used.
+- Input is normalized (lower-case; trailing shortcuts such as `Ctrl+T` and trailing `.` / `…` removed) and compared with fuzzy matching. A score of **80 or higher** is a match and is labelled `Local DB`; everything else is `Google`.
+- The glossary is re-read each time you start a capture, so edits apply on the next `F8`.
 
-### Language codes
+| Language | Code | Language | Code |
+| :--- | :---: | :--- | :---: |
+| English | `en` | Korean | `ko` |
+| Vietnamese | `vi` | French | `fr` |
+| Chinese | `zh` | German | `de` |
+| Japanese | `ja` | Spanish | `es` |
+| Russian | `ru` | Thai | `th` |
 
-| Language | Code |
-| --- | --- |
-| English | `en` |
-| Vietnamese | `vi` |
-| Chinese (Simplified / Traditional) | `zh` |
-| Japanese | `ja` |
-| Korean | `ko` |
-| French | `fr` |
-| German | `de` |
-| Spanish | `es` |
-| Russian | `ru` |
-| Thai | `th` |
-
-> 💡 **Tip:** Add as many languages as you like to a single entry. Restart a capture (press `F8` again) after editing the file to load the latest version.
+The bundled glossary contains 14 common browser-menu terms (Settings, History, Downloads, Extensions, …) in English, Chinese (with Pinyin) and Vietnamese, as a template for your own entries.
 
 ---
 
-## 🛠️ Configuration
+## 8. Configuration
 
-All settings are constants at the top of `snipping_tool.py`:
+Settings are constants near the top of `snipping_tool.py`:
 
-| Constant | Default | Description |
-| --- | --- | --- |
-| `pytesseract.pytesseract.tesseract_cmd` | `C:\Program Files\Tesseract-OCR\tesseract.exe` | Path to the Tesseract executable. |
-| `HOTKEY_SNIP` | `'f8'` | Global hotkey that starts a capture (e.g. `'ctrl+shift+t'`). |
-| `MAX_HISTORY` | `100` | Maximum number of history entries kept. |
-| `LANG_MAP` | 11 languages | Maps display names to local-DB codes and Google Translate codes. Add new target languages here. |
-| `PREFERRED_OCR_LANGS` | `eng, vie, chi_sim, …` | Tesseract language packs the app will try to load. |
+| Constant | Default | Purpose |
+| :--- | :--- | :--- |
+| `pytesseract.pytesseract.tesseract_cmd` | `C:\Program Files\Tesseract-OCR\tesseract.exe` | Path to `tesseract.exe` |
+| `HOTKEY_SNIP` | `'f8'` | Global capture hotkey (e.g. `'ctrl+shift+t'`) |
+| `MAX_HISTORY` | `100` | Maximum stored history entries |
+| `LANG_MAP` | 11 languages | Display name → glossary code and Google Translate code |
+| `PREFERRED_OCR_LANGS` | `eng, vie, chi_sim, …` | Tesseract packs the app tries to load |
 
-### Adding a new target language
-
-```python
-LANG_MAP = {
-    # ...
-    "Italian": {"db": "it", "gt": "it"},
-}
-```
-
-Then install the matching Tesseract language pack (`ita`) and append it to `PREFERRED_OCR_LANGS`.
+To add a target language, extend `LANG_MAP` (for example `"Italian": {"db": "it", "gt": "it"}`), install the matching Tesseract pack (`ita`) and append it to `PREFERRED_OCR_LANGS`.
 
 ---
 
-## 🗂️ Project Structure
+## 9. Scope, Limitations & Caveats
+
+1. **Windows only.** The app relies on Windows-specific calls (opening files with the default editor) and a Windows Tesseract path.
+2. **Primary monitor only.** Capture uses the primary display; selections on secondary monitors are not supported.
+3. **OCR quality varies.** Low-contrast, stylized, rotated or very small text may be misread. Each line is translated independently, so multi-line sentences lose context.
+4. **Google Translate dependency.** `deep-translator` uses Google's web endpoint, which is unofficial for this use: it needs internet and may be rate-limited or change without notice. Glossary matches are unaffected.
+5. **Hotkey constraints.** Global hotkeys may not reach elevated (administrator) windows unless the script is also run elevated; `F8` may conflict with other applications.
+6. **Fixed configuration.** Hotkey and Tesseract path are edited in source; there is no settings UI yet.
+7. **Plain-text storage.** History and glossary are plain JSON next to the script; `capture.png` is overwritten on every capture.
+
+**Roadmap (proposed)**
+
+- [ ] Multi-monitor support
+- [ ] Settings UI (hotkey, Tesseract path, OCR languages)
+- [ ] Optional offline translation backend
+- [ ] Packaged `.exe` installer
+- [ ] Cross-platform support (macOS / Linux)
+
+---
+
+## 10. Privacy
+
+- Screenshots are processed **locally**; OCR runs on your machine through Tesseract.
+- Only the recognized **text** of lines not resolved by the glossary is sent to Google Translate.
+- History is stored locally in `history.json`; use **Clear All** to delete it.
+
+---
+
+## 11. Project Structure & Contributing
 
 ```text
 .
-├── snipping_tool.py    # Main application (capture, OCR, translation, UI)
-├── database.json       # Local glossary (editable)
+├── snipping_tool.py    # Application: capture, OCR, translation, UI
+├── database.json       # Editable local glossary
 ├── history.json        # Translation history (auto-managed)
 ├── requirements.txt    # Python dependencies
-└── capture.png         # Last captured region (auto-generated, overwritten each time)
+└── capture.png         # Last captured region (generated)
 ```
 
----
+Contributions are welcome: fork the repo, create a branch (`git checkout -b feature/your-feature`), commit, push, and open a pull request. Add `capture.png` and `history.json` to `.gitignore`.
 
-## 🩺 Troubleshooting
-
-<details>
-<summary><b><code>TesseractNotFoundError</code> or OCR returns nothing</b></summary>
-
-Make sure Tesseract is installed and the path in `snipping_tool.py` points to the correct `tesseract.exe`.
-
-</details>
-
-<details>
-<summary><b>"No text detected in the captured area"</b></summary>
-
-- Drag a slightly larger selection with some margin around the text.
-- Make sure the Tesseract language pack for the text you are capturing is installed (e.g. `chi_sim` for Simplified Chinese).
-- Very low-contrast or highly stylized text may not be recognized.
-
-</details>
-
-<details>
-<summary><b>The F8 hotkey does not respond</b></summary>
-
-- Another application may be using the same key — change `HOTKEY_SNIP`.
-- Some elevated (administrator) windows block global hotkeys from non-elevated apps. Try running the script from an elevated terminal.
-
-</details>
-
-<details>
-<summary><b>Translation shows <code>Error (...)</code></b></summary>
-
-The Google Translate fallback requires an internet connection. Terms found in your local glossary still work offline.
-
-</details>
-
-<details>
-<summary><b>Chinese text has strange spacing or wrong characters</b></summary>
-
-The app already removes spurious spaces between CJK characters. For better accuracy, install `chi_sim` / `chi_tra` and capture text at a reasonable size.
-
-</details>
-
----
-
-## 🔒 Privacy
-
-- Screenshots are processed **locally** — OCR runs on your machine through Tesseract.
-- Only the **extracted text** of lines that are *not* resolved by the local glossary is sent to Google Translate via `deep-translator`.
-- History and glossary are stored as plain JSON files next to the script. Use **Clear All** in the History view to delete your history.
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Multi-monitor support (currently the primary display only)
-- [ ] User-configurable hotkey and settings UI
-- [ ] Optional offline translation backend
-- [ ] Packaged `.exe` release with a bundled installer
-- [ ] Custom tray icon
-
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome!
-
-1. Fork the project
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m "Add amazing feature"`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
+**License:** distributed under the **MIT License** — see [`LICENSE`](./LICENSE).
 
 ---
 
