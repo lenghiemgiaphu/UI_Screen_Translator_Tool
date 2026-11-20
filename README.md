@@ -137,8 +137,8 @@ By default the app expects `C:\Program Files\Tesseract-OCR\tesseract.exe` (see [
 **2. Clone and set up**
 
 ```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
+git clone https://github.com/lenghiemgiaphu/UI_Screen_Translator_Tool.git
+cd UI_Screen_Translator_Tool
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
