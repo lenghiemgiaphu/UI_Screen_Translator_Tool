@@ -5,4 +5,3 @@ deep-translator>=1.11.4
 keyboard>=0.13.5
 thefuzz>=0.22.1
 python-Levenshtein>=0.25.0
-deep-translator>=1.11.4
