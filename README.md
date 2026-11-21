@@ -1,5 +1,12 @@
 <div align="center">
 
+[🎬 Demo](https://www.youtube.com/watch?v=1mjwbPWqnpk) • [✨ Features](#2-features) • [⚙️ How It Works](#3-how-it-works) • [🚀 Installation](#5-installation) • [📚 Glossary](#7-local-glossary-databasejson) • [⚠️ Limitations](#9-scope-limitations--caveats)
+
+<br>
+
+[![Watch Live Demo](https://img.youtube.com/vi/1mjwbPWqnpk/maxresdefault.jpg)](https://www.youtube.com/watch?v=1mjwbPWqnpk)
+*▶️ [Watch the live demo on YouTube](https://www.youtube.com/watch?v=1mjwbPWqnpk)*
+
 # Screen Translator
 
 **Press a hotkey, drag over any text on your screen, and read the translation right next to it — OCR and a curated local glossary first, Google Translate as fallback.**
